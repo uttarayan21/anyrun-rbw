@@ -1,0 +1,23 @@
+[package]
+name = "anyrun-rbw"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyrun-plugin = { git = "https://github.com/Kirottu/anyrun" }
+rbw = "1.9.0"
+abi_stable = "0.11.3"
+serde = { version = "1.0.197", features = ["derive"] }
+error-stack = "0.4.1"
+humantime = "2.1.0"
+totp-lite = "2.0.1"
+base32 = "0.4.0"
+comfy-table = { version = "7.1.0", optional = true }
+serde_json = "1.0.114"
+
+[features]
+comfy-table = ["dep:comfy-table"]
