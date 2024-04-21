@@ -9,7 +9,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyrun-plugin = { git = "https://github.com/Kirottu/anyrun" }
-rbw = "1.9.0"
 abi_stable = "0.11.3"
 serde = { version = "1.0.197", features = ["derive"] }
 error-stack = "0.4.1"
