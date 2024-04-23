@@ -26,19 +26,19 @@ pub fn fail_on_err<Args, T>(args: Args, func: impl FnOnce(Args) -> Result<T>) ->
         }
     }
 }
-pub fn fail_on_err0<T>(func: impl FnOnce() -> Result<T>) -> T {
-    match func() {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("{:?}", e);
-            if let Some(ret) = e.downcast_ref::<i32>() {
-                std::process::exit(*ret);
-            } else {
-                std::process::exit(1);
-            }
-        }
-    }
-}
+// pub fn fail_on_err0<T>(func: impl FnOnce() -> Result<T>) -> T {
+//     match func() {
+//         Ok(t) => t,
+//         Err(e) => {
+//             eprintln!("{:?}", e);
+//             if let Some(ret) = e.downcast_ref::<i32>() {
+//                 std::process::exit(*ret);
+//             } else {
+//                 std::process::exit(1);
+//             }
+//         }
+//     }
+// }
 
 pub struct State {
     entries: Vec<Entry>,
@@ -128,14 +128,24 @@ impl State {
         }
         let query = query.pipe(|q| {
             if let Some(prefix) = self.prefix.as_deref() {
-                q.strip_prefix(prefix).unwrap_or(q)
+                q.strip_prefix(prefix).unwrap_or(q).trim()
             } else {
                 q
             }
         });
+        use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+        let matcher = SkimMatcherV2::default();
         self.entries
             .iter()
-            .filter(|entry| entry.name.contains(query))
+            // .filter(|entry| entry.name.contains(query))
+            .filter(|entry| {
+                matcher
+                    .fuzzy_match(
+                        &format!("{}/{}/{}", entry.folder, entry.name, entry.user),
+                        query,
+                    )
+                    .is_some()
+            })
             .cloned()
             .collect()
     }
