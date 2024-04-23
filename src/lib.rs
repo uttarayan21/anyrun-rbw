@@ -2,7 +2,7 @@ use ::tap::*;
 use abi_stable::std_types::{ROption, RString, RVec};
 use anyrun_plugin::*;
 use error_stack::{Report, ResultExt};
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 type Result<T, E = Report<Error>> = core::result::Result<T, E>;
 #[derive(Debug)]
@@ -167,10 +167,15 @@ impl Default for Config {
 #[init]
 fn init(config_dir: RString) -> State {
     let config = (|| -> Result<Config> {
-        let config = std::fs::read(config_dir.as_str()).change_context(Error)?;
-        let config: Config = ron::de::from_bytes(&config).change_context(Error)?;
+        let config = std::fs::read(Path::new(config_dir.as_str()).join("rbw.ron"))
+            .change_context(Error)
+            .attach_printable("Failed to read the rbw.ron file")?;
+        let config: Config = ron::de::from_bytes(&config)
+            .change_context(Error)
+            .attach_printable("Failed to deserialize rbw.ron to Config")?;
         Ok(config)
     })()
+    .inspect_err(|e| eprintln!("{:?}", e))
     .unwrap_or_default();
     fail_on_err(config, State::load)
 }
