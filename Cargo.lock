@@ -91,10 +91,12 @@ dependencies = [
  "anyrun-plugin",
  "base32",
  "comfy-table",
+ "crc64fast",
  "error-stack",
  "humantime",
  "serde",
  "serde_json",
+ "tap",
  "totp-lite",
 ]
 
@@ -190,6 +192,12 @@ checksum = "53fe5e26ff1b7aef8bca9c6080520cfb8d9333c7568e1829cef191a9723e5504"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "crc64fast"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26bb92ecea20291efcf0009e2713d64b7e327dedb8ce780545250f24075429e2"
 
 [[package]]
 name = "crossbeam-channel"
@@ -534,6 +542,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "tap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "totp-lite"

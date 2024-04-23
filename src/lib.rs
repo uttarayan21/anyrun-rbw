@@ -50,6 +50,7 @@ pub struct Entry {
     user: String,
     folder: String,
 }
+
 impl core::str::FromStr for Entry {
     type Err = Report<Error>;
     fn from_str(s: &str) -> Result<Self> {
@@ -64,6 +65,27 @@ impl core::str::FromStr for Entry {
             user: user.to_string(),
             folder: folder.to_string(),
         })
+    }
+}
+
+impl Entry {
+    pub fn get(&self) -> Result<String> {
+        use ::tap::*;
+        let out = Command::new("rbw")
+            .arg("get")
+            .arg(&self.id)
+            .output()
+            .change_context(Error)?;
+        String::from_utf8(out.stdout)
+            .change_context(Error)
+            .attach_printable("Failed change context from output")
+            .pipe(|p| {
+                p.and_then(|pass| {
+                    pass.is_empty()
+                        .then(|| Err(Error.into()))
+                        .unwrap_or(Ok(pass))
+                })
+            })
     }
 }
 
@@ -89,7 +111,11 @@ impl State {
             Err(Error.into())
         }
     }
+
     pub fn find_entries(&self, query: &str) -> Vec<Entry> {
+        if query.is_empty() {
+            return vec![];
+        }
         self.entries
             .iter()
             .filter(|entry| entry.name.contains(query))
@@ -112,29 +138,39 @@ fn info() -> PluginInfo {
 }
 
 #[get_matches]
-fn get_matches(input: RString, state: &State) -> RVec<Match> {
+pub fn get_matches(input: RString, state: &State) -> RVec<Match> {
     state
         .find_entries(&input)
         .into_iter()
-        .map(|entry| Match {
-            id: ROption::RNone,
-            title: format!("{}/{}", entry.name, entry.user).into(),
-            description: Some(format!("{}", entry.folder).into()).into(),
-            use_pango: true,
-            icon: ROption::RNone,
+        .map(|entry| {
+            let mut digest = crc64fast::Digest::new();
+            digest.write(entry.id.as_bytes());
+            Match {
+                id: Some(digest.sum64()).into(),
+                title: [entry.name, entry.user].join("/").into(),
+                description: Some(entry.folder.into()).into(),
+                use_pango: true,
+                icon: ROption::RNone,
+            }
         })
         .collect()
 }
 
 #[handler]
-fn handler(selection: Match, state: &State) -> HandleResult {
+pub fn handler(selection: Match, state: &State) -> HandleResult {
     HandleResult::Copy(
         state
             .entries
             .iter()
-            .find(|entry| format!("{}/{}", entry.name, entry.user) == selection.title)
+            .find(|e| crc64(&e.id) == selection.id.unwrap_or_default())
             .map(|entry| entry.id.as_bytes().to_vec())
             .unwrap_or_default()
             .into(),
     )
+}
+
+fn crc64(input: impl AsRef<[u8]>) -> u64 {
+    let mut digest = crc64fast::Digest::new();
+    digest.write(input.as_ref());
+    digest.sum64()
 }
