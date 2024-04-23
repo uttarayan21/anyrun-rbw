@@ -41,6 +41,7 @@ pub fn fail_on_err0<T>(func: impl FnOnce() -> Result<T>) -> T {
 
 pub struct State {
     entries: Vec<Entry>,
+    prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +91,7 @@ impl Entry {
 }
 
 impl State {
-    pub fn load() -> Result<Self> {
+    pub fn load(config: Config) -> Result<Self> {
         let out = Command::new("rbw")
             .arg("list")
             .arg("--fields")
@@ -106,14 +107,23 @@ impl State {
                 .lines()
                 .map(|line| line.parse::<Entry>())
                 .collect::<Result<Vec<_>>>()?;
-            Ok(Self { entries })
+            Ok(Self {
+                entries,
+                prefix: config.prefix,
+            })
         } else {
             Err(Error.into())
         }
     }
 
     pub fn find_entries(&self, query: &str) -> Vec<Entry> {
-        if query.is_empty() {
+        if self
+            .prefix
+            .as_deref()
+            .map(|prefix| query.starts_with(prefix))
+            .unwrap_or(false)
+            || query.is_empty()
+        {
             return vec![];
         }
         self.entries
@@ -124,9 +134,26 @@ impl State {
     }
 }
 
+#[derive(serde::Deserialize)]
+pub struct Config {
+    prefix: Option<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self { prefix: Some(":p".into()) }
+    }
+}
+
 #[init]
-fn init(_: RString) -> State {
-    fail_on_err0(State::load)
+fn init(config_dir: RString) -> State {
+    let config = (|| -> Result<Config> {
+        let config = std::fs::read(config_dir.as_str()).change_context(Error)?;
+        let config: Config = ron::de::from_bytes(&config).change_context(Error)?;
+        Ok(config)
+    })()
+    .unwrap_or_default();
+    fail_on_err(config, State::load)
 }
 
 #[info]
