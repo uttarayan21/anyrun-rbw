@@ -1,3 +1,4 @@
+use ::tap::*;
 use abi_stable::std_types::{ROption, RString, RVec};
 use anyrun_plugin::*;
 use error_stack::{Report, ResultExt};
@@ -71,7 +72,6 @@ impl core::str::FromStr for Entry {
 
 impl Entry {
     pub fn get(&self) -> Result<String> {
-        use ::tap::*;
         let out = Command::new("rbw")
             .arg("get")
             .arg(&self.id)
@@ -120,12 +120,19 @@ impl State {
         if self
             .prefix
             .as_deref()
-            .map(|prefix| query.starts_with(prefix))
-            .unwrap_or(false)
+            .map(|prefix| !query.starts_with(prefix))
+            .unwrap_or(true)
             || query.is_empty()
         {
             return vec![];
         }
+        let query = query.pipe(|q| {
+            if let Some(prefix) = self.prefix.as_deref() {
+                q.strip_prefix(prefix).unwrap_or(q)
+            } else {
+                q
+            }
+        });
         self.entries
             .iter()
             .filter(|entry| entry.name.contains(query))
@@ -141,7 +148,9 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self { prefix: Some(":p".into()) }
+        Self {
+            prefix: Some(":p".into()),
+        }
     }
 }
 
