@@ -163,7 +163,8 @@ pub fn handler(selection: Match, state: &State) -> HandleResult {
             .entries
             .iter()
             .find(|e| crc64(&e.id) == selection.id.unwrap_or_default())
-            .map(|entry| entry.id.as_bytes().to_vec())
+            .and_then(|entry| entry.get().ok())
+            .map(|e| e.as_bytes().to_vec())
             .unwrap_or_default()
             .into(),
     )
